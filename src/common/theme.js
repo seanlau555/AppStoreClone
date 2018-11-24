@@ -73,8 +73,7 @@ const sessionTitle = {
   ...font.title2,
   marginTop: spacing.base,
   marginBottom: spacing.small,
-  marginHorizontal: spacing.base
-  // marginBottom: spacing.tiny
+  marginHorizontal: spacing.small
 }
 
 const textTitle = {
