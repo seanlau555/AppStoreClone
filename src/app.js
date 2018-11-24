@@ -14,12 +14,13 @@ import {
   StyleSheet,
   Text, View, FlatList, ActivityIndicator, RefreshControl
 } from 'react-native';
-const {width, height} = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 import { sessionTitle, spacing, font } from './common/theme';
 import Colors from './common/colors';
 import Avatar from './components/Avatar';
 import styles from './styles';
 import Axios from 'axios';
+import _ from 'lodash';
 
 import { SearchBar } from 'react-native-elements'
 
@@ -35,8 +36,11 @@ export default class App extends Component {
       data: [],
       list: [],
       top: [],
-      // headerList: new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 }),
       page: 0,
+
+      searchText: "",
+      searchList:[],
+      searchResultList:[],
       _isLoading: true,
       _isLoadingMore: false,
     }
@@ -48,17 +52,38 @@ export default class App extends Component {
     this.renderHeader = this.renderHeader.bind(this);
     this.renderItemRow = this.renderItemRow.bind(this);
     this.renderItemCard = this.renderItemCard.bind(this);
+    this.renderSearchSection = this.renderSearchSection.bind(this);
+
+    //search function
+    this.onChangeText = this.onChangeText.bind(this);
+
   }
   componentWillMount() {
     this.getTopGrossing();
     this.getListData();
   }
 
+  renameData(array) {
+    var result = [];
+    for (var i=0; i < array.length; i++){
+      var item = array[i];
+      result[i] = {
+        "title": item['im:name'].label,
+        "category": item['category'].attributes.label,
+        "author": item['im:artist'].label,
+        "summary": item['summary'].label,
+        "coverImage": item['im:image'][1].label
+      }
+    }
+    return result;
+  }
+
   async getTopGrossing() {
     try {
       const request = await Axios.get(topGrossingAPI);
       this.setState({
-        top: request.data.feed.entry
+        top: this.renameData(request.data.feed.entry),//request.data.feed.entry,
+        searchList: this.renameData(request.data.feed.entry),//request.data.feed.entry
       });
     } catch (e) {
       console.log(e);
@@ -71,13 +96,13 @@ export default class App extends Component {
   async getListData() {
     try {
       const request = await Axios.get(topFreeAppsAPI);
-      // console.log(request.data.feed.entry);
-      let data = request.data.feed.entry;
+      let data = this.renameData(request.data.feed.entry);
       this.setState({
         _isLoading: false,
         data: data,
         list: data.slice(0, pagination),
-        page: 1
+        page: 1,
+        searchList: this.state.searchList.concat(data)
       });
     } catch (e) {
       console.log(e);
@@ -90,7 +115,7 @@ export default class App extends Component {
 
   loadPagination() {
     if (this.state.data.length > this.state.list.length) {
-      setTimeout(() => {
+      let timer = setTimeout(() => {
         let newPage = this.state.page;
         let currentList = this.state.list;
         let nextList = this.state.data.slice(newPage * pagination, (newPage + 1) * pagination);
@@ -99,36 +124,64 @@ export default class App extends Component {
           list: pushedList,
           page: newPage + 1
         })
+        clearTimeout(timer);
       }, 200);
 
     }
   }
 
+  onClear() {
+
+  }
+  onChangeText(text) {
+    if (text){
+      var keys = ["title", 'category', 'author', 'summary'];
+      var results = [];
+      results = this.state.searchList.filter(function(wine){
+        var lowSearch = text.toLowerCase();
+        return keys.some( key => 
+            String(wine[key]).toLowerCase().includes(lowSearch) 
+        );
+      });
+    }
+    this.setState({
+      searchText: text,
+      searchResultList: results
+    })
+  }
+
   // // App Search
   renderSearchSection() {
     return (
-      <View style={{height:30, width: width}}>
+      <SearchBar
+        showLoading
+        cancelButtonTitle="Cancel"
+        lightTheme
+        ref={search => this.search = search}
+        onChangeText={
+          _.debounce((e) => {this.onChangeText(e)}, 500 )
+        }
+        placeholder='Search...' />
 
-      </View>
     );
   }
 
   // App Recommendation
   renderItemCard({ item, index }) {
     return (
-      <View style={{ width: 80,  marginHorizontal: spacing.tiny, marginBottom: spacing.small  }}>
-        <Avatar source={item['im:image'][1].label} style={{ width: 80, height: 80, borderRadius: spacing.tiny }} />
-        <Text numberOfLines={2} style={font.small}>{item['im:name'].label}</Text>
-        <Text numberOfLines={1} style={{ ...font.small, marginTop: 4, color: Colors.grey, }}>{item['category'].attributes.label}</Text>
+      <View style={{ width: 80, marginHorizontal: spacing.tiny, marginBottom: spacing.small }}>
+        <Avatar source={item.coverImage} style={{ width: 80, height: 80, borderRadius: spacing.tiny }} />
+        <Text numberOfLines={2} style={font.small}>{item.title}</Text>
+        <Text numberOfLines={1} style={{ ...font.small, marginTop: 4, color: Colors.grey, }}>{item.category}</Text>
       </View>
     )
   }
   renderHeader() {
     return (
-      <View style={{flex:1, borderBottomColor: Colors.separator, borderBottomWidth: 1}}>
+      <View style={{ flex: 1, borderBottomColor: Colors.separator, borderBottomWidth: 1 }}>
         <Text style={[sessionTitle]}>{"推介"}</Text>
         <FlatList
-          style={{ flex: 1,  paddingHorizontal: spacing.tiny}}
+          style={{ flex: 1, paddingHorizontal: spacing.tiny }}
           data={this.state.top}
           extraData={this.state}
           keyExtractor={(item, index) => index.toString()}
@@ -148,10 +201,10 @@ export default class App extends Component {
     return (
       <View style={styles.row}>
         <Text style={{ ...font.large, color: Colors.grey, marginHorizontal: spacing.small }}>{rowNumber}</Text>
-        <Avatar source={item['im:image'][1].label} style={{ ...avatarExtraStyle, width: 54, height: 54, marginRight: spacing.tiny }} />
+        <Avatar source={item.coverImage} style={{ ...avatarExtraStyle, width: 54, height: 54, marginRight: spacing.tiny }} />
         <View style={{ marginRight: spacing.small, flex: 1 }}>
-          <Text numberOfLines={1} style={font.regular}>{item['im:name'].label}</Text>
-          <Text numberOfLines={1} style={{ ...font.small, marginTop: 4, color: Colors.grey, }}>{item['category'].attributes.label}</Text>
+          <Text numberOfLines={1} style={font.regular}>{item.title}</Text>
+          <Text numberOfLines={1} style={{ ...font.small, marginTop: 4, color: Colors.grey, }}>{item.category}</Text>
         </View>
       </View>
     )
@@ -168,35 +221,28 @@ export default class App extends Component {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "white", }}>
         {this.renderSearchSection()}
-        <FlatList
-          style={{ flex: 1, backgroundColor: "white" }}
-          data={this.state.list}
-          extraData={this.state}
-          keyExtractor={(item, index) => index.toString()}
-          ListHeaderComponent={() => this.renderHeader()}
-          renderItem={this.renderItemRow}
-          onEndReached={this.loadPagination}
-          onEndReachedThreshold={0.1}
-        />
+
+        {this.state.searchText ? <FlatList
+            style={{ flex: 1, backgroundColor: "white" }}
+            data={this.state.searchResultList}
+            extraData={this.state}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={this.renderItemRow}
+          /> :
+          <FlatList
+            style={{ flex: 1, backgroundColor: "white" }}
+            data={this.state.list}
+            extraData={this.state}
+            keyExtractor={(item, index) => index.toString()}
+            ListHeaderComponent={this.renderHeader}
+            renderItem={this.renderItemRow}
+            onEndReached={this.loadPagination}
+            onEndReachedThreshold={0.1}
+          />
+        }
+
       </SafeAreaView>
 
     )
   }
 }
-
-// networkStatus for refreshing
-// refreshing=
-
-
-// onRefresh={
-//   <RefreshControl
-//       onRefresh={this.onRefresh}
-//       tintColor={Colors.themeColor}
-//       refreshing={this.state.isRefreshing}
-//       colors={[Colors.themeColor]}
-//       progressBackgroundColor={'#FFF'}
-//   />
-// }
-
-// onRefresh={()=>this.getListData()}
-// onEndReachedThreshold={0.5}
