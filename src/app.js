@@ -9,15 +9,15 @@
 import React, { Component } from 'react';
 import {
   Platform, SafeAreaView,
-  // ListView,
   Dimensions,
-  StyleSheet,
-  Text, View, FlatList, ActivityIndicator, RefreshControl
+  NetInfo,
+  Text, View, FlatList, ActivityIndicator
 } from 'react-native';
 const { width, height } = Dimensions.get('window');
 import { sessionTitle, spacing, font } from './common/theme';
 import Colors from './common/colors';
 import Avatar from './components/Avatar';
+import SnackBar from './components/SnackBar';
 import styles from './styles';
 import Axios from 'axios';
 import _ from 'lodash';
@@ -39,14 +39,18 @@ export default class App extends Component {
       page: 0,
 
       searchText: "",
-      searchList:[],
-      searchResultList:[],
+      searchList: [],
+      searchResultList: [],
       _isLoading: true,
       _isLoadingMore: false,
+
+      snackVisible: false,
+      errorMessage: ""
     }
     this.getListData = this.getListData.bind(this);
     this.getTopGrossing = this.getTopGrossing.bind(this);
     this.loadPagination = this.loadPagination.bind(this);
+    this.actionHandler = this.actionHandler.bind(this);
 
     //render function
     this.renderHeader = this.renderHeader.bind(this);
@@ -59,13 +63,28 @@ export default class App extends Component {
 
   }
   componentWillMount() {
+    // const netStatus = NetInfo.getConnectionInfo();
+    // console.log(netStatus);
+    NetInfo.isConnected.addEventListener('connectionChange', status => {
+      let snackVisible = false;
+      let errorMessage = "No internet connection";
+      if (!status) {
+        snackVisible = true;
+      }
+      this.setState({ networkStatus: status, errorMessage, snackVisible });
+    });
+
     this.getTopGrossing();
     this.getListData();
   }
 
+  actionHandler(){
+
+  }
+
   renameData(array) {
     var result = [];
-    for (var i=0; i < array.length; i++){
+    for (var i = 0; i < array.length; i++) {
       var item = array[i];
       result[i] = {
         "title": item['im:name'].label,
@@ -130,17 +149,14 @@ export default class App extends Component {
     }
   }
 
-  onClear() {
-
-  }
   onChangeText(text) {
-    if (text){
+    if (text) {
       var keys = ["title", 'category', 'author', 'summary'];
       var results = [];
-      results = this.state.searchList.filter(function(wine){
+      results = this.state.searchList.filter(function (wine) {
         var lowSearch = text.toLowerCase();
-        return keys.some( key => 
-            String(wine[key]).toLowerCase().includes(lowSearch) 
+        return keys.some(key =>
+          String(wine[key]).toLowerCase().includes(lowSearch)
         );
       });
     }
@@ -159,7 +175,7 @@ export default class App extends Component {
         lightTheme
         ref={search => this.search = search}
         onChangeText={
-          _.debounce((e) => {this.onChangeText(e)}, 500 )
+          _.debounce((e) => { this.onChangeText(e) }, 500)
         }
         placeholder='Search...' />
 
@@ -223,12 +239,12 @@ export default class App extends Component {
         {this.renderSearchSection()}
 
         {this.state.searchText ? <FlatList
-            style={{ flex: 1, backgroundColor: "white" }}
-            data={this.state.searchResultList}
-            extraData={this.state}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={this.renderItemRow}
-          /> :
+          style={{ flex: 1, backgroundColor: "white" }}
+          data={this.state.searchResultList}
+          extraData={this.state}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={this.renderItemRow}
+        /> :
           <FlatList
             style={{ flex: 1, backgroundColor: "white" }}
             data={this.state.list}
@@ -240,9 +256,14 @@ export default class App extends Component {
             onEndReachedThreshold={0.1}
           />
         }
+        <SnackBar visible={this.state.snackVisible} position={"bottom"}
+          textMessage={this.state.errorMessage}
+          isAvoidingView={true}/>
 
       </SafeAreaView>
 
     )
   }
+
+
 }
