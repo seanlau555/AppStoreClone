@@ -23,7 +23,8 @@ import Axios from 'axios';
 import _ from 'lodash';
 
 import { SearchBar } from 'react-native-elements'
-
+import AppListView from './AppListView';
+import SearchView from './SearchView';
 
 const topFreeAppsAPI = "https://itunes.apple.com/hk/rss/topfreeapplications/limit=100/json";
 const topGrossingAPI = "https://itunes.apple.com/hk/rss/topgrossingapplications/limit=10/json";
@@ -50,12 +51,8 @@ export default class App extends Component {
     this.getListData = this.getListData.bind(this);
     this.getTopGrossing = this.getTopGrossing.bind(this);
     this.loadPagination = this.loadPagination.bind(this);
-    this.actionHandler = this.actionHandler.bind(this);
 
     //render function
-    this.renderHeader = this.renderHeader.bind(this);
-    this.renderItemRow = this.renderItemRow.bind(this);
-    this.renderItemCard = this.renderItemCard.bind(this);
     this.renderSearchSection = this.renderSearchSection.bind(this);
 
     //search function
@@ -63,8 +60,6 @@ export default class App extends Component {
 
   }
   componentWillMount() {
-    // const netStatus = NetInfo.getConnectionInfo();
-    // console.log(netStatus);
     NetInfo.isConnected.addEventListener('connectionChange', status => {
       let snackVisible = false;
       let errorMessage = "No internet connection";
@@ -76,10 +71,6 @@ export default class App extends Component {
 
     this.getTopGrossing();
     this.getListData();
-  }
-
-  actionHandler(){
-
   }
 
   renameData(array) {
@@ -133,7 +124,8 @@ export default class App extends Component {
   }
 
   loadPagination() {
-    if (this.state.data.length > this.state.list.length) {
+    this.setState({_isLoadingMore:true});
+    if (this.state.data.length > this.state.list.length && this.state._isLoadingMore === false) {
       let timer = setTimeout(() => {
         let newPage = this.state.page;
         let currentList = this.state.list;
@@ -141,6 +133,7 @@ export default class App extends Component {
         let pushedList = currentList.concat(nextList);
         this.setState({
           list: pushedList,
+          _isLoadingMore: false,
           page: newPage + 1
         })
         clearTimeout(timer);
@@ -182,50 +175,6 @@ export default class App extends Component {
     );
   }
 
-  // App Recommendation
-  renderItemCard({ item, index }) {
-    return (
-      <View style={{ width: 80, marginHorizontal: spacing.tiny, marginBottom: spacing.small }}>
-        <Avatar source={item.coverImage} style={{ width: 80, height: 80, borderRadius: spacing.tiny }} />
-        <Text numberOfLines={2} style={font.small}>{item.title}</Text>
-        <Text numberOfLines={1} style={{ ...font.small, marginTop: 4, color: Colors.grey, }}>{item.category}</Text>
-      </View>
-    )
-  }
-  renderHeader() {
-    return (
-      <View style={{ flex: 1, borderBottomColor: Colors.separator, borderBottomWidth: 1 }}>
-        <Text style={[sessionTitle]}>{"推介"}</Text>
-        <FlatList
-          style={{ flex: 1, paddingHorizontal: spacing.tiny }}
-          data={this.state.top}
-          extraData={this.state}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={this.renderItemCard}
-          horizontal={true}
-        />
-      </View>
-    )
-  }
-
-  // App Listing
-  isOdd(num) { return num % 2; }
-  renderItemRow({ item, index }) {
-    let rowNumber = index + 1;
-    let avatarExtraStyle = { borderRadius: 27 };
-    if (this.isOdd(rowNumber)) avatarExtraStyle = { borderRadius: spacing.tiny };
-    return (
-      <View style={styles.row}>
-        <Text style={{ ...font.large, color: Colors.grey, marginHorizontal: spacing.small }}>{rowNumber}</Text>
-        <Avatar source={item.coverImage} style={{ ...avatarExtraStyle, width: 54, height: 54, marginRight: spacing.tiny }} />
-        <View style={{ marginRight: spacing.small, flex: 1 }}>
-          <Text numberOfLines={1} style={font.regular}>{item.title}</Text>
-          <Text numberOfLines={1} style={{ ...font.small, marginTop: 4, color: Colors.grey, }}>{item.category}</Text>
-        </View>
-      </View>
-    )
-  }
-
   render() {
     if (this.state._isLoading) {
       return (
@@ -237,29 +186,14 @@ export default class App extends Component {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "white", }}>
         {this.renderSearchSection()}
-
-        {this.state.searchText ? <FlatList
-          style={{ flex: 1, backgroundColor: "white" }}
-          data={this.state.searchResultList}
-          extraData={this.state}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={this.renderItemRow}
-        /> :
-          <FlatList
-            style={{ flex: 1, backgroundColor: "white" }}
-            data={this.state.list}
-            extraData={this.state}
-            keyExtractor={(item, index) => index.toString()}
-            ListHeaderComponent={this.renderHeader}
-            renderItem={this.renderItemRow}
-            onEndReached={this.loadPagination}
-            onEndReachedThreshold={0.1}
-          />
+        
+        {this.state.searchText ? 
+        <SearchView state={this.state} {...this.props} />:
+        <AppListView state={this.state} loadPagination={this.loadPagination} {...this.props}/>
         }
         <SnackBar visible={this.state.snackVisible} position={"bottom"}
           textMessage={this.state.errorMessage}
           isAvoidingView={true}/>
-
       </SafeAreaView>
 
     )
