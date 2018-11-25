@@ -44,6 +44,7 @@ export default class AppListView extends Component {
                     extraData={this.props.state}
                     keyExtractor={(item, index) => index.toString()}
                     renderItem={this.renderItemCard}
+                    showsHorizontalScrollIndicator={false}
                     horizontal={true}
                 />
             </View>
@@ -80,6 +81,9 @@ export default class AppListView extends Component {
                 renderItem={this.renderItemRow}
                 onEndReached={this.props.loadPagination}
                 onEndReachedThreshold={0.1}
+                refreshing={this.props.state._isRefreshing}
+                onRefresh={this.props.reload}
+
             />
 
 
