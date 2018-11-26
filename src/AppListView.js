@@ -1,19 +1,13 @@
 import React, { Component } from 'react';
 import {
-    Platform, SafeAreaView,
-    Dimensions,
-    NetInfo,
-    Text, View, FlatList, ActivityIndicator
+    Text, View, FlatList
 } from 'react-native';
-const { width, height } = Dimensions.get('window');
 import { sessionTitle, spacing, font } from './common/theme';
 import Colors from './common/colors';
 import Avatar from './components/Avatar';
-import SnackBar from './components/SnackBar';
 import styles from './styles';
 import _ from 'lodash';
 
-import { SearchBar } from 'react-native-elements'
 
 export default class AppListView extends Component {
     constructor(props) {
@@ -40,7 +34,7 @@ export default class AppListView extends Component {
                 <Text style={[sessionTitle]}>{"推介"}</Text>
                 <FlatList
                     style={{ flex: 1, paddingHorizontal: spacing.tiny }}
-                    data={this.props.state.top}
+                    data={this.props.apps.grossingApps}
                     extraData={this.props.state}
                     keyExtractor={(item, index) => index.toString()}
                     renderItem={this.renderItemCard}
@@ -81,7 +75,7 @@ export default class AppListView extends Component {
                 renderItem={this.renderItemRow}
                 onEndReached={this.props.loadPagination}
                 onEndReachedThreshold={0.1}
-                refreshing={this.props.state._isRefreshing}
+                refreshing={this.props.apps.isRefreshing}
                 onRefresh={this.props.reload}
 
             />
@@ -90,44 +84,3 @@ export default class AppListView extends Component {
         )
     }
 }
-
-// function ConfirmBattle(props){
-
-
-//     return props.isLoading === true
-//         ? <p> LOADING! </p>
-//         : <div className="jumbotron col-sm-12 text-center" style={styles.transparentBg}>
-//                 <h1>Confirm Players</h1>
-//                 <div className='col-sm-8 col-sm-offset-2'>
-//                     <UserDetailsWrapper header="Player 1">
-//                         <UserDetails info={props.playersInfo[0]}/>
-//                     </UserDetailsWrapper>
-//                     <UserDetailsWrapper header="Player 2">
-//                         <UserDetails info={props.playersInfo[1]}/>
-//                     </UserDetailsWrapper>
-//                 </div>
-//                 <div classNam="col-sm-8 col-sm-offset-2">
-//                     <div className="col-sm-12" style={styles.space}>
-//                         <button type='button' className='btn btn-lg btn-success' onClick={props.onInitiateBattle}>
-//                             Initiate Battle!
-//                         </button>
-//                         </div>
-//                     <div className="col-sm-12" style={styles.space}>
-//                         <Link to='/playerOne'>
-//                             <button type='button' className='btn btn-lg btn-danger'>
-//                                 Reselect Players
-//                             </button>
-//                         </Link>
-//                     </div>
-//                 </div>
-//             </div>
-
-// }
-
-// ConfirmBattle.propTypes = {
-//     isLoading:PropTypes.bool.isRequired,
-//     onInitiateBattle:PropTypes.func.isRequired,
-//     playersInfo:PropTypes.array.isRequired
-// }
-
-// module.exports = ConfirmBattle;

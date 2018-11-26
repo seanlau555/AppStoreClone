@@ -3,8 +3,6 @@ import PropTypes from 'prop-types';
 import {
   StyleSheet,
   Text,
-  View,
-  Image,
   Animated,
   Easing,
   TouchableOpacity

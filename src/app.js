@@ -9,16 +9,13 @@
 import React, { Component } from 'react';
 import {
   SafeAreaView,
-  Dimensions,
   NetInfo,
   Text,
   TouchableOpacity,
   View, ActivityIndicator
 } from 'react-native';
-const { width, height } = Dimensions.get('window');
-import { sessionTitle, spacing, font } from './common/theme';
+import { spacing, font } from './common/theme';
 import Colors from './common/colors';
-import Avatar from './components/Avatar';
 import SnackBar from './components/SnackBar';
 import styles from './styles';
 import Axios from 'axios';
@@ -28,32 +25,29 @@ import { SearchBar } from 'react-native-elements'
 import AppListView from './AppListView';
 import SearchView from './SearchView';
 
+
+import { bindActionCreators } from 'redux';
+import { connect } from 'react-redux';
+import { 
+  getAppList
+} from './actions';
+
 const topFreeAppsAPI = "https://itunes.apple.com/hk/rss/topfreeapplications/limit=100/json";
 const topGrossingAPI = "https://itunes.apple.com/hk/rss/topgrossingapplications/limit=10/json";
 const pagination = 10;
 
-export default class App extends Component {
+class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      data: [],
       list: [],
-      top: [],
       page: 0,
-
-      fetchingError: false,
       searchText: "",
-      searchList: [],
-      searchResultList: [],
-      _isLoading: true,
-      _isRefreshing: false,
       _isLoadingMore: false,
 
       snackVisible: false,
       errorMessage: ""
     }
-    this.getListData = this.getListData.bind(this);
-    this.getTopGrossing = this.getTopGrossing.bind(this);
     this.loadPagination = this.loadPagination.bind(this);
     this.reload = this.reload.bind(this);
 
@@ -74,14 +68,22 @@ export default class App extends Component {
       this.setState({ networkStatus: status, errorMessage, snackVisible });
     });
 
-    this.getTopGrossing();
-    this.getListData();
+    this.props.actions.GetAppList();
+  }
+
+
+componentWillReceiveProps(nextProps) {
+  if (nextProps.apps.freeApps.length > 0 && !nextProps.apps.isLoading && !nextProps.apps.isFreshing) {
+    this.setState({
+      list: nextProps.apps.freeApps.slice(0, pagination),
+      page: 1,
+      searchList: nextProps.apps.freeApps.concat(nextProps.apps.grossingApps)
+    }); 
+  }
   }
 
   reload() {
-    this.setState({_isRefreshing: true});
-    this.getTopGrossing();
-    this.getListData();
+    this.props.actions.GetAppList(true);
   }
 
   renameData(array) {
@@ -99,52 +101,13 @@ export default class App extends Component {
     return result;
   }
 
-  async getTopGrossing() {
-    try {
-      const request = await Axios.get(topGrossingAPI);
-      this.setState({
-        top: this.renameData(request.data.feed.entry),//request.data.feed.entry,
-        searchList: this.renameData(request.data.feed.entry),//request.data.feed.entry
-        fetchingError: false,
-      });
-    } catch (e) {
-      console.log(e);
-      this.setState({
-        fetchingError: true,
-      })  
-    }
-  }
-
-  async getListData() {
-    try {
-      const request = await Axios.get(topFreeAppsAPI);
-      let data = this.renameData(request.data.feed.entry);
-      this.setState({
-        _isLoading: false,
-        data: data,
-        list: data.slice(0, pagination),
-        page: 1,
-        searchList: this.state.searchList.concat(data),
-        fetchingError: false,
-        _isRefreshing: false
-      });
-    } catch (e) {
-      console.log(e);
-      this.setState({
-        _isLoading: false,
-        fetchingError: true,
-        _isRefreshing: false
-      })
-    }
-  }
-
   loadPagination() {
     this.setState({ _isLoadingMore: true });
-    if (this.state.data.length > this.state.list.length && this.state._isLoadingMore === false) {
+    if (this.props.apps.freeApps.length > this.state.list.length && this.state._isLoadingMore === false) {
       let timer = setTimeout(() => {
         let newPage = this.state.page;
         let currentList = this.state.list;
-        let nextList = this.state.data.slice(newPage * pagination, (newPage + 1) * pagination);
+        let nextList = this.props.apps.freeApps.slice(newPage * pagination, (newPage + 1) * pagination);
         let pushedList = currentList.concat(nextList);
         this.setState({
           list: pushedList,
@@ -186,19 +149,19 @@ export default class App extends Component {
           _.debounce((e) => { this.onChangeText(e) }, 500)
         }
         placeholder='Search...' />
-
     );
   }
 
   render() {
-    if (this.state._isLoading) {
+
+    if (this.props.apps.isLoading) {
       return (
         <View style={styles.container}>
           <ActivityIndicator size="large" color={Colors.themeColor} />
         </View>
       )
     }
-    if (this.state.fetchingError) {
+    if (this.props.apps.fetchError) {
       return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
           <View style={styles.container}>
@@ -225,9 +188,25 @@ export default class App extends Component {
           textMessage={this.state.errorMessage}
           isAvoidingView={true} />
       </SafeAreaView>
-
     )
   }
-
-
 }
+
+
+
+function mapStateToProps(state, props) {
+  return {
+      apps: state.apps,
+  };
+}
+
+function mapDispatchToProps(dispatch) {
+  return {
+      actions: bindActionCreators({
+        GetAppList:getAppList
+      }, dispatch)
+  };
+}
+
+
+module.exports =  connect(mapStateToProps, mapDispatchToProps)(App);
